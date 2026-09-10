@@ -1,0 +1,26 @@
+# 旧静态站 → 新站（Astro）301 映射
+# 由 scripts/gen-redirects.mjs 生成，请勿手改
+
+/index.html                /                  301
+/game.html                 /games/            301
+/guides.html               /guides/           301
+/dynamics.html             /dynamics/         301
+/news.html                 /news/             301
+/rankings.html             /rankings/         301
+/profile.html              /profile/          301
+
+# 已删除的游戏（旧 id 映射兜底，避免 404 跳列表）
+/game-detail.html  id=40  /games/  301
+/game-detail.html  id=41  /games/  301
+/game-detail.html  id=42  /games/  301
+
+# 详情页：查询参数 → 静态路径（一行覆盖全部条目）
+/game-detail.html  id=:id  /games/:id/        301
+/article.html      id=:id  /articles/:id/     301
+
+# 兜底：无参数访问旧详情页时回到列表页
+/game-detail.html          /games/            301
+/article.html              /                  301
+
+# 已废弃的旧资源（旧 Service Worker 可能仍会请求）
+/sitemap.xml               /sitemap-index.xml 301
