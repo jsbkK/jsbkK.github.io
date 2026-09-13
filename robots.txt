@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://baizhouyouxi.netlify.app/sitemap-index.xml
+Sitemap: https://jsbkk.github.io/sitemap-index.xml
