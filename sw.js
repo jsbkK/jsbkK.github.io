@@ -10,7 +10,7 @@
  *  - HTML 导航请求：Network-First，离线时回退缓存，再回退 /offline/
  */
 
-const VERSION = 'gamezone-v6';
+const VERSION = 'gamezone-v7';
 const OFFLINE_URL = '/offline/';
 
 self.addEventListener('install', (event) => {
