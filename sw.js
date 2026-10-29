@@ -7,10 +7,10 @@
  *
  * 策略：
  *  - /_astro/*（带内容哈希的构建产物）与 /fonts/* ：Cache-First
- *  - HTML 导航请求：Network-First，离线时回退缓存，再回退 /offline/
+ *  - HTML 导航请求：Stale-While-Revalidate（缓存秒开，后台静默刷新），离线回退 /offline/
  */
 
-const VERSION = 'gamezone-v8';
+const VERSION = 'gamezone-v9';
 const OFFLINE_URL = '/offline/';
 
 self.addEventListener('install', (event) => {
@@ -65,21 +65,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML 导航：网络优先，离线兜底
+  // HTML 导航：stale-while-revalidate —— 有缓存立即可见(秒开)，后台静默刷新
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         const cache = await caches.open(VERSION);
-        try {
-          const res = await fetch(request);
-          if (res.ok) cache.put(request, res.clone());
-          return res;
-        } catch (err) {
-          const cached = await cache.match(request);
-          if (cached) return cached;
-          const offline = await cache.match(OFFLINE_URL);
-          return offline || Response.error();
-        }
+        const cached = await cache.match(request);
+        // 后台拉取最新版并写入缓存，供下次访问使用
+        const network = fetch(request)
+          .then((res) => {
+            if (res.ok) cache.put(request, res.clone());
+            return res;
+          })
+          .catch(() => undefined);
+        // 命中缓存则直接返回(秒开)，否则等网络；都失败再回退离线页
+        if (cached) return cached;
+        const res = await network;
+        if (res) return res;
+        const offline = await cache.match(OFFLINE_URL);
+        return offline || Response.error();
       })()
     );
   }
