@@ -10,7 +10,7 @@
  *  - HTML 导航请求：Stale-While-Revalidate（缓存秒开，后台静默刷新），离线回退 /offline/
  */
 
-const VERSION = 'gamezone-v9';
+const VERSION = 'gamezone-v10';
 const OFFLINE_URL = '/offline/';
 
 self.addEventListener('install', (event) => {
