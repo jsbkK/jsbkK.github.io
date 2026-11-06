@@ -1,5 +1,5 @@
 /**
- * Service Worker —— gamezone-v6
+ * Service Worker —— gamezone-v11
  *
  * 关键背景：旧站 8/9 个页面注册过 /sw.js（gamezone-cache-v5，缓存优先）。
  * 如果新站不在根路径提供 /sw.js，浏览器不会卸载旧 SW，用户可能一直看到旧页面。
@@ -7,10 +7,10 @@
  *
  * 策略：
  *  - /_astro/*（带内容哈希的构建产物）与 /fonts/* ：Cache-First
- *  - HTML 导航请求：Stale-While-Revalidate（缓存秒开，后台静默刷新），离线回退 /offline/
+ *  - HTML 导航请求：Network-First（有网取最新版并写回缓存，断网回退缓存再回退 /offline/）
  */
 
-const VERSION = 'gamezone-v10';
+const VERSION = 'gamezone-v11';
 const OFFLINE_URL = '/offline/';
 
 self.addEventListener('install', (event) => {
@@ -65,25 +65,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML 导航：stale-while-revalidate —— 有缓存立即可见(秒开)，后台静默刷新
+  // HTML 导航：Network-First —— 有网始终取最新版并写回缓存，断网/失败才回退缓存与离线页。
+  // 旧的 Stale-While-Revalidate 会先返回旧页；后台刷新没有被 waitUntil 保护，SW 在
+  // respondWith 兑现后即被回收，cache.put 常被打断，内容站每天发文后移动端一直看到上一版。
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         const cache = await caches.open(VERSION);
-        const cached = await cache.match(request);
-        // 后台拉取最新版并写入缓存，供下次访问使用
-        const network = fetch(request)
-          .then((res) => {
-            if (res.ok) cache.put(request, res.clone());
-            return res;
-          })
-          .catch(() => undefined);
-        // 命中缓存则直接返回(秒开)，否则等网络；都失败再回退离线页
-        if (cached) return cached;
-        const res = await network;
-        if (res) return res;
-        const offline = await cache.match(OFFLINE_URL);
-        return offline || Response.error();
+        try {
+          const res = await fetch(request);
+          if (res.ok) {
+            // 用 waitUntil 保住 SW 生命周期，确保缓存写入完成（离线回退才有内容）
+            event.waitUntil(cache.put(request, res.clone()));
+          }
+          return res;
+        } catch (err) {
+          const cached = await cache.match(request);
+          if (cached) return cached;
+          const offline = await cache.match(OFFLINE_URL);
+          return offline || Response.error();
+        }
       })()
     );
   }
